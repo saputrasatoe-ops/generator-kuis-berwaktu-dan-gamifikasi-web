@@ -1,0 +1,1871 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Generator Kuis Berwaktu & Gamifikasi Web (SD Fase A, B, C)</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts: Fredoka & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+            game: ['Fredoka', 'Plus Jakarta Sans', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    /* Animasi Gamifikasi */
+    @keyframes popBounce {
+      0% { opacity: 0; transform: scale(0.92) translateY(10px); }
+      70% { transform: scale(1.02) translateY(-2px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .animate-pop { animation: popBounce 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+    @keyframes shakeWrong {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-8px); }
+      40% { transform: translateX(8px); }
+      60% { transform: translateX(-5px); }
+      80% { transform: translateX(5px); }
+    }
+    .animate-shake { animation: shakeWrong 0.38s ease-in-out; }
+
+    @keyframes pulseUrgent {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
+    .animate-urgent { animation: pulseUrgent 0.55s infinite; }
+
+    /* Tema Arena Kuis */
+    .arena-space {
+      background: radial-gradient(circle at top right, #312e81 0%, #1e1b4b 45%, #0f172a 100%);
+      color: #ffffff;
+    }
+    .arena-forest {
+      background: linear-gradient(145deg, #065f46 0%, #047857 45%, #064e3b 100%);
+      color: #ffffff;
+    }
+    .arena-classic {
+      background: linear-gradient(145deg, #f8fafc 0%, #eef2ff 55%, #e0e7ff 100%);
+      color: #0f172a;
+    }
+
+    /* Tombol Opsi 3D Push Effect */
+    .btn-option-3d {
+      transition: transform 0.1s ease, box-shadow 0.1s ease, filter 0.15s ease;
+    }
+    .btn-option-3d:active:not(:disabled) {
+      transform: translateY(3px);
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col">
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Confetti Canvas (Overlay Kemenangan) -->
+  <canvas id="confetti-canvas" class="fixed inset-0 pointer-events-none z-40 hidden"></canvas>
+
+  <!-- HEADER UTAMA -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-2xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 text-white flex items-center justify-center shadow-md shadow-indigo-500/20 shrink-0">
+          <!-- Inline SVG Trophy/Bolt Icon -->
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="font-game font-bold text-base sm:text-lg text-slate-900 leading-tight tracking-wide">
+            Generator <span class="text-indigo-600">Kuis Berwaktu</span> & Gamifikasi
+          </h1>
+          <p class="text-[11px] sm:text-xs text-slate-500 hidden sm:block">Ubah Teks Materi Jadi Kuis Interaktif • SD Fase A, B, C • 100% Offline</p>
+        </div>
+      </div>
+
+      <!-- Navigasi Mode & Kontrol Suara -->
+      <div class="flex items-center gap-2">
+        <div class="bg-slate-100 p-1 rounded-2xl flex items-center gap-1 border border-slate-200">
+          <button
+            type="button"
+            id="nav-studio"
+            onclick="switchAppMode('studio')"
+            class="px-3 sm:px-4 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 text-white shadow-2xs transition flex items-center gap-1.5"
+          >
+            <span>🛠️</span>
+            <span>Studio Guru</span>
+          </button>
+          <button
+            type="button"
+            id="nav-arena"
+            onclick="switchAppMode('arena')"
+            class="px-3 sm:px-4 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5"
+          >
+            <span>🎮</span>
+            <span>Arena Kuis</span>
+            <span id="nav-q-count" class="px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 text-[10px] font-extrabold">5</span>
+          </button>
+        </div>
+
+        <button
+          type="button"
+          id="btn-sound"
+          onclick="toggleSound()"
+          title="Aktifkan / Matikan Efek Suara"
+          class="p-2 sm:px-3 sm:py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition flex items-center gap-1"
+        >
+          <span id="sound-icon">🔊</span>
+          <span class="hidden md:inline" id="sound-label">Suara</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN WORKSPACE -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- ===================================================================== -->
+    <!-- MODE 1: STUDIO PEMBUAT KUIS (TEACHER STUDIO)                          -->
+    <!-- ===================================================================== -->
+    <section id="mode-studio" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+      <!-- KOLOM KIRI: Pengaturan Kuis & Generator Teks Materi (5 Kolom) -->
+      <div class="lg:col-span-5 space-y-5">
+
+        <!-- Kartu 1: Pengaturan Identitas & Aturan Main -->
+        <div class="bg-white rounded-3xl border border-slate-200 shadow-2xs overflow-hidden">
+          <div class="p-4 sm:p-5 bg-gradient-to-r from-indigo-50 to-purple-50 border-b border-slate-200/80 flex items-center justify-between">
+            <div>
+              <h2 class="font-game font-bold text-base text-slate-900 flex items-center gap-2">
+                <span>⚙️</span> 1. Pengaturan Arena Kuis
+              </h2>
+              <p class="text-xs text-slate-500">Atur identitas, durasi timer, nyawa, dan tema visual</p>
+            </div>
+          </div>
+
+          <div class="p-4 sm:p-5 space-y-3.5">
+            <div>
+              <label for="cfg-judul" class="block text-xs font-bold text-slate-700 mb-1">Judul Kuis Interaktif</label>
+              <input
+                type="text"
+                id="cfg-judul"
+                value="Tantangan IPA: Proses Fotosintesis Tumbuhan"
+                oninput="syncConfig()"
+                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
+              />
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label for="cfg-mapel" class="block text-xs font-bold text-slate-700 mb-1">Mata Pelajaran</label>
+                <input
+                  type="text"
+                  id="cfg-mapel"
+                  value="IPAS (IPA & IPS)"
+                  oninput="syncConfig()"
+                  class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm font-medium focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+              <div>
+                <label for="cfg-fase" class="block text-xs font-bold text-slate-700 mb-1">Fase / Kelas SD</label>
+                <select
+                  id="cfg-fase"
+                  onchange="syncConfig()"
+                  class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm font-semibold bg-white focus:outline-none focus:border-indigo-500"
+                >
+                  <option value="Fase A (Kelas 1–2 SD)">Fase A (Kelas 1–2 SD)</option>
+                  <option value="Fase B (Kelas 3–4 SD)" selected>Fase B (Kelas 3–4 SD)</option>
+                  <option value="Fase C (Kelas 5–6 SD)">Fase C (Kelas 5–6 SD)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label for="cfg-waktu" class="block text-xs font-bold text-slate-700 mb-1">⏱️ Waktu per Soal</label>
+                <select
+                  id="cfg-waktu"
+                  onchange="syncConfig()"
+                  class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm font-semibold bg-white focus:outline-none focus:border-indigo-500"
+                >
+                  <option value="10">10 Detik (Kilat)</option>
+                  <option value="15">15 Detik (Cepat)</option>
+                  <option value="20" selected>20 Detik (Standar SD)</option>
+                  <option value="30">30 Detik (Sedang)</option>
+                  <option value="45">45 Detik (Santai)</option>
+                </select>
+              </div>
+              <div>
+                <label for="cfg-nyawa" class="block text-xs font-bold text-slate-700 mb-1">❤️ Sistem Nyawa</label>
+                <select
+                  id="cfg-nyawa"
+                  onchange="syncConfig()"
+                  class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm font-semibold bg-white focus:outline-none focus:border-indigo-500"
+                >
+                  <option value="3" selected>3 Nyawa (Tantangan)</option>
+                  <option value="5">5 Nyawa (Ramah Anak)</option>
+                  <option value="0">Tanpa Batas (Latihan)</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label for="cfg-tema" class="block text-xs font-bold text-slate-700 mb-1">🎨 Tema Visual Arena</label>
+              <select
+                id="cfg-tema"
+                onchange="syncConfig()"
+                class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm font-semibold bg-white focus:outline-none focus:border-indigo-500"
+              >
+                <option value="space" selected>🚀 Petualangan Luar Angkasa (Gelap Neon)</option>
+                <option value="forest">🌳 Hutan Ceria (Hijau Segar)</option>
+                <option value="classic">📘 Klasik Modern (Terang Bersih)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Kartu 2: Mesin Konversi Teks Materi ke Kuis Otomatis -->
+        <div class="bg-white rounded-3xl border border-slate-200 shadow-2xs overflow-hidden">
+          <div class="p-4 sm:p-5 bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-200/70">
+            <h2 class="font-game font-bold text-base text-slate-900 flex items-center gap-2">
+              <span>✨</span> 2. Ubah Teks Materi Jadi Kuis
+            </h2>
+            <p class="text-xs text-slate-600 mt-0.5">Tempel ringkasan materi (1–3 paragraf), sistem otomatis membuatkan soal pilihan ganda!</p>
+          </div>
+
+          <div class="p-4 sm:p-5 space-y-3.5">
+            <!-- Contoh Materi Instan 1-Klik -->
+            <div>
+              <span class="block text-[11px] font-bold text-slate-500 mb-1.5">Coba Contoh Materi Ringkas (1-Klik):</span>
+              <div class="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onclick="loadSampleMaterial('fotosintesis')"
+                  class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition"
+                >
+                  🌱 Fotosintesis
+                </button>
+                <button
+                  type="button"
+                  onclick="loadSampleMaterial('siklus_air')"
+                  class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 transition"
+                >
+                  💧 Siklus Air
+                </button>
+                <button
+                  type="button"
+                  onclick="loadSampleMaterial('musyawarah')"
+                  class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition"
+                >
+                  🤝 Musyawarah
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label for="txt-materi" class="block text-xs font-bold text-slate-700 mb-1">
+                Ringkasan Teks Materi Pelajaran:
+              </label>
+              <textarea
+                id="txt-materi"
+                rows="6"
+                placeholder="Tempel ringkasan materi pelajaran di sini... (Contoh: Fotosintesis adalah proses tumbuhan hijau membuat makanan sendiri dengan bantuan cahaya matahari...)"
+                class="w-full p-3.5 rounded-2xl border border-slate-300 text-xs sm:text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
+              ></textarea>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div>
+                <label for="gen-count" class="block text-[11px] font-bold text-slate-600 mb-1">Jumlah Soal Dihasilkan</label>
+                <select
+                  id="gen-count"
+                  class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold bg-white"
+                >
+                  <option value="3">3 Soal Kilat</option>
+                  <option value="5" selected>5 Soal Standar</option>
+                  <option value="8">8 Soal Lengkap</option>
+                  <option value="10">10 Soal Tantangan</option>
+                </select>
+              </div>
+              <div>
+                <label for="gen-mode" class="block text-[11px] font-bold text-slate-600 mb-1">Tindakan Daftar Soal</label>
+                <select
+                  id="gen-mode"
+                  class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold bg-white"
+                >
+                  <option value="replace" selected>Ganti Soal Lama</option>
+                  <option value="append">Tambahkan ke Daftar</option>
+                </select>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onclick="generateQuizFromText()"
+              class="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-game font-bold text-sm shadow-lg shadow-indigo-500/25 flex items-center justify-center gap-2 transition active:scale-[0.98]"
+            >
+              <span>⚡</span>
+              <span>Generate Soal Otomatis dari Teks</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- KOLOM KANAN: Daftar Soal, Editor Manual & Ekspor File Siswa (7 Kolom) -->
+      <div class="lg:col-span-7 space-y-5">
+
+        <!-- Bilah Aksi Ekspor & Mainkan -->
+        <div class="bg-white rounded-3xl border border-slate-200 p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div>
+            <h2 class="font-game font-bold text-base sm:text-lg text-slate-900 flex items-center gap-2">
+              <span>📋</span> Daftar Soal Kuis (<span id="studio-q-total">5</span> Butir)
+            </h2>
+            <p class="text-xs text-slate-500">Edit langsung soal di bawah atau unduh menjadi file HTML mandiri untuk siswa.</p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onclick="exportStandaloneStudentHTML()"
+              class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm flex items-center gap-1.5 transition"
+              title="Unduh file HTML kuis siap dimainkan siswa di HP/Laptop atau diunggah ke GitHub Pages"
+            >
+              <span>📥</span>
+              <span>Unduh File Kuis Siswa (.html)</span>
+            </button>
+
+            <button
+              type="button"
+              onclick="switchAppMode('arena')"
+              class="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs shadow-sm flex items-center gap-1.5 transition"
+            >
+              <span>▶️</span>
+              <span>Mainkan Sekarang</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Toolbar Tambahan (Tambah Manual, Salin, Simpan/Muat JSON) -->
+        <div class="flex flex-wrap items-center justify-between gap-2 px-1">
+          <button
+            type="button"
+            onclick="openQuestionModal(null)"
+            class="px-3.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-xs flex items-center gap-1.5 transition"
+          >
+            <span>➕</span>
+            <span>Tambah Soal Manual</span>
+          </button>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onclick="copyQuizAsText()"
+              class="px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-semibold text-xs transition"
+            >
+              📋 Salin Teks Soal
+            </button>
+            <button
+              type="button"
+              onclick="exportProjectJSON()"
+              class="px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-semibold text-xs transition"
+            >
+              💾 Simpan Proyek (.json)
+            </button>
+            <label class="px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-semibold text-xs transition cursor-pointer">
+              📂 Muat Proyek
+              <input type="file" accept=".json" onchange="importProjectJSON(event)" class="hidden" />
+            </label>
+          </div>
+        </div>
+
+        <!-- Container Daftar Kartu Soal -->
+        <div id="studio-questions-list" class="space-y-3.5">
+          <!-- Kartu soal dirender via JS -->
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- MODE 2: ARENA KUIS SISWA (LIVE GAMIFIED PLAYER)                       -->
+    <!-- ===================================================================== -->
+    <section id="mode-arena" class="hidden max-w-4xl mx-auto">
+      <div id="arena-container" class="rounded-3xl shadow-xl overflow-hidden border border-slate-200/60 transition-all duration-300 arena-space">
+        <!-- Konten Arena (Layar Mulai / Layar Main / Layar Hasil) dirender di sini -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL EDITOR TAMBAH / EDIT SOAL MANUAL -->
+  <div id="question-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-xl w-full p-5 sm:p-6 shadow-2xl border border-slate-200 animate-pop max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-4">
+        <h3 id="modal-title" class="font-game font-bold text-lg text-slate-900">Tambah Soal Baru</h3>
+        <button type="button" onclick="closeQuestionModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold">✕</button>
+      </div>
+
+      <form id="modal-form" onsubmit="saveQuestionFromModal(event)" class="space-y-3.5">
+        <input type="hidden" id="edit-q-index" value="-1" />
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Pertanyaan Kuis:</label>
+          <textarea
+            id="edit-q-text"
+            rows="3"
+            required
+            placeholder="Tuliskan pertanyaan kuis yang jelas untuk siswa..."
+            class="w-full p-3 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-indigo-500"
+          ></textarea>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Pilihan A:</label>
+            <input type="text" id="edit-opt-0" required class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Pilihan B:</label>
+            <input type="text" id="edit-opt-1" required class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Pilihan C:</label>
+            <input type="text" id="edit-opt-2" required class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Pilihan D:</label>
+            <input type="text" id="edit-opt-3" required class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Kunci Jawaban Benar:</label>
+            <select id="edit-q-correct" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm font-bold bg-emerald-50 text-emerald-900">
+              <option value="0">Pilihan A</option>
+              <option value="1">Pilihan B</option>
+              <option value="2">Pilihan C</option>
+              <option value="3">Pilihan D</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Pembahasan Singkat (Muncul Setelah Jawab):</label>
+            <input type="text" id="edit-q-explanation" placeholder="Contoh: Klorofil adalah zat hijau daun." class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm" />
+          </div>
+        </div>
+
+        <div class="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
+          <button type="button" onclick="closeQuestionModal()" class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs">
+            Batal
+          </button>
+          <button type="submit" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm">
+            Simpan Soal
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="bg-white border-t border-slate-200 py-4 mt-10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+      <p><strong>Generator Kuis Berwaktu & Gamifikasi Web</strong> • Mendukung SD Fase A, B, C • 100% Offline.</p>
+      <p>Gunakan tombol <strong>Unduh File Kuis Siswa (.html)</strong> untuk membagikan kuis ke perangkat siswa atau GitHub Pages.</p>
+    </div>
+  </footer>
+
+  <!-- ======================================================================= -->
+  <!-- JAVASCRIPT ENGINE: WEB AUDIO, TEXT-TO-QUIZ NLP, & GAMIFICATION PLAYER   -->
+  <!-- ======================================================================= -->
+  <script>
+    // =========================================================================
+    // 1. WEB AUDIO API SYNTHESIZER (EFEK SUARA GAME TANPA FILE MP3 EKSTERNAL)
+    // =========================================================================
+    let soundEnabled = true;
+    let audioCtx = null;
+
+    function getAudioCtx() {
+      if (!audioCtx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) audioCtx = new AC();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    function toggleSound() {
+      soundEnabled = !soundEnabled;
+      document.getElementById('sound-icon').textContent = soundEnabled ? '🔊' : '🔇';
+      document.getElementById('sound-label').textContent = soundEnabled ? 'Suara' : 'Mati';
+      if (soundEnabled) playNote(660, 0.08, 'sine', 0.15);
+    }
+
+    function playNote(freq, dur, type = 'sine', vol = 0.16, delay = 0) {
+      if (!soundEnabled) return;
+      try {
+        const ctx = getAudioCtx();
+        if (!ctx) return;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+        gain.gain.setValueAtTime(vol, ctx.currentTime + delay);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + dur);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + delay);
+        osc.stop(ctx.currentTime + delay + dur);
+      } catch (e) {}
+    }
+
+    function sfxStartGame() {
+      playNote(523.25, 0.12, 'triangle', 0.2, 0.00); // C5
+      playNote(659.25, 0.12, 'triangle', 0.2, 0.10); // E5
+      playNote(783.99, 0.12, 'triangle', 0.2, 0.20); // G5
+      playNote(1046.50, 0.28, 'sine', 0.22, 0.30);   // C6
+    }
+
+    function sfxTickUrgent() {
+      playNote(880, 0.07, 'sine', 0.18);
+    }
+
+    function sfxCorrect(combo) {
+      const pitchBoost = Math.min(combo * 35, 210);
+      playNote(587.33 + pitchBoost, 0.11, 'sine', 0.2, 0.00);
+      playNote(880.00 + pitchBoost, 0.22, 'triangle', 0.22, 0.09);
+    }
+
+    function sfxWrong() {
+      playNote(210, 0.18, 'sawtooth', 0.16, 0.00);
+      playNote(165, 0.26, 'sawtooth', 0.16, 0.14);
+    }
+
+    function sfxVictory() {
+      const notes = [523.25, 659.25, 783.99, 1046.50, 783.99, 1046.50];
+      const times = [0, 0.11, 0.22, 0.34, 0.50, 0.64];
+      notes.forEach((f, i) => playNote(f, i === 5 ? 0.42 : 0.13, 'triangle', 0.22, times[i]));
+    }
+
+    // =========================================================================
+    // 2. CONTOH MATERI BAWAAN & BANK KATA PENGECOH (DISTRACTOR POOL)
+    // =========================================================================
+    const SAMPLE_MATERIALS = {
+      fotosintesis: {
+        judul: "Tantangan IPA: Proses Fotosintesis Tumbuhan",
+        mapel: "IPAS (Ilmu Pengetahuan Alam dan Sosial)",
+        fase: "Fase B (Kelas 3–4 SD)",
+        teks: "Fotosintesis adalah proses tumbuhan hijau membuat makanan sendiri dengan bantuan cahaya matahari. Proses fotosintesis terjadi terutama pada bagian daun yang mengandung klorofil atau zat hijau daun. Dalam proses ini, tumbuhan menyerap air dari dalam tanah melalui akar dan mengambil gas karbon dioksida dari udara melalui stomata. Hasil utama dari proses fotosintesis adalah karbohidrat sebagai sumber energi tumbuhan dan gas oksigen yang sangat dibutuhkan manusia serta hewan untuk bernapas."
+      },
+      siklus_air: {
+        judul: "Kuis Cepat IPAS: Tahapan Siklus Air di Bumi",
+        mapel: "IPAS (Ilmu Pengetahuan Alam dan Sosial)",
+        fase: "Fase C (Kelas 5–6 SD)",
+        teks: "Siklus air merupakan perputaran air secara terus-menerus dari bumi ke atmosfer lalu kembali lagi ke bumi. Tahap pertama disebut evaporasi, yaitu proses penguapan air laut, sungai, dan danau akibat panas sinar matahari. Uap air yang naik ke langit akan mengalami pendinginan dan berubah menjadi titik-titik air membentuk awan melalui proses kondensasi. Ketika awan sudah terlalu berat dan jenuh, titik air akan jatuh ke permukaan bumi sebagai hujan yang dinamakan presipitasi."
+      },
+      musyawarah: {
+        judul: "Gamifikasi PPKn: Budaya Musyawarah di Sekolah",
+        mapel: "Pendidikan Pancasila",
+        fase: "Fase B (Kelas 3–4 SD)",
+        teks: "Musyawarah adalah pembahasan bersama untuk mencapai keputusan atas penyelesaian masalah bersama. Pengamalan budaya musyawarah sesuai dengan nilai Pancasila sila keempat yang dilambangkan dengan kepala banteng. Tujuan utama dari musyawarah adalah mencapai mufakat atau kesepakatan bersama tanpa merugikan pihak mana pun. Apabila kata mufakat belum tercapai setelah berdiskusi, pengambilan keputusan dapat dilakukan melalui pemungutan suara terbanyak yang disebut voting."
+      }
+    };
+
+    const DISTRACTOR_VOCAB = [
+      "klorofil", "oksigen", "karbon dioksida", "stomata", "akar", "batang", "cahaya matahari",
+      "evaporasi", "kondensasi", "presipitasi", "infiltrasi", "atmosfer", "uap air",
+      "musyawarah", "mufakat", "voting", "toleransi", "gotong royong", "keadilan", "tanggung jawab",
+      "energi panas", "energi gerak", "gravitasi", "ekosistem", "herbivora", "karnivora", "omnivora"
+    ];
+
+    const STOPWORDS_ID = new Set([
+      "yang", "dan", "di", "ke", "dari", "pada", "dalam", "untuk", "dengan", "atau", "adalah",
+      "merupakan", "yaitu", "yakni", "sebagai", "oleh", "karena", "akibat", "jika", "apabila",
+      "ketika", "saat", "akan", "dapat", "bisa", "harus", "sangat", "terlalu", "sudah", "telah",
+      "ini", "itu", "tersebut", "lain", "antara", "serta", "secara", "melalui", "terutama", "bagian",
+      "proses", "tahap", "pertama", "kedua", "utama", "hasil", "tujuan", "cara", "membuat", "sendiri"
+    ]);
+
+    // =========================================================================
+    // 3. STATE APLIKASI UTAMA
+    // =========================================================================
+    let quizConfig = {
+      judul: "Tantangan IPA: Proses Fotosintesis Tumbuhan",
+      mapel: "IPAS (Ilmu Pengetahuan Alam dan Sosial)",
+      fase: "Fase B (Kelas 3–4 SD)",
+      waktuPerSoal: 20,
+      nyawaMaks: 3,
+      tema: "space"
+    };
+
+    let questions = [];
+
+    // State Gameplay Arena
+    let gameState = {
+      screen: 'welcome', // 'welcome' | 'playing' | 'result'
+      playerName: '',
+      currentIndex: 0,
+      score: 0,
+      combo: 0,
+      maxCombo: 0,
+      lives: 3,
+      timeLeft: 20,
+      timerId: null,
+      totalTimeSpent: 0,
+      questionStartTime: 0,
+      answeredCurrent: false,
+      history: [] // { question, selectedIdx, correctIdx, isCorrect, pointsEarned }
+    };
+
+    // =========================================================================
+    // 4. INISIALISASI AWAL
+    // =========================================================================
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('txt-materi').value = SAMPLE_MATERIALS.fotosintesis.teks;
+      generateQuizFromText(true);
+      setupKeyboardShortcuts();
+    });
+
+    function syncConfig() {
+      quizConfig.judul = document.getElementById('cfg-judul').value.trim() || "Kuis Interaktif Kelas";
+      quizConfig.mapel = document.getElementById('cfg-mapel').value.trim() || "Umum";
+      quizConfig.fase = document.getElementById('cfg-fase').value;
+      quizConfig.waktuPerSoal = parseInt(document.getElementById('cfg-waktu').value, 10) || 20;
+      quizConfig.nyawaMaks = parseInt(document.getElementById('cfg-nyawa').value, 10);
+      quizConfig.tema = document.getElementById('cfg-tema').value;
+
+      if (!document.getElementById('mode-arena').classList.contains('hidden') && gameState.screen === 'welcome') {
+        renderArenaWelcome();
+      }
+    }
+
+    function loadSampleMaterial(key) {
+      const sample = SAMPLE_MATERIALS[key];
+      if (!sample) return;
+      document.getElementById('cfg-judul').value = sample.judul;
+      document.getElementById('cfg-mapel').value = sample.mapel;
+      document.getElementById('cfg-fase').value = sample.fase;
+      document.getElementById('txt-materi').value = sample.teks;
+      syncConfig();
+      generateQuizFromText(false);
+      playNote(680, 0.08, 'sine', 0.14);
+      showToast(`Contoh materi "${sample.judul}" dimuat & soal otomatis dibuat!`, 'success');
+    }
+
+    // =========================================================================
+    // 5. SMART TEXT-TO-QUIZ ENGINE (100% OFFLINE RULE-BASED NLP)
+    // =========================================================================
+    function generateQuizFromText(silent = false) {
+      const rawText = document.getElementById('txt-materi').value.trim();
+      if (!rawText) {
+        if (!silent) {
+          playNote(220, 0.2, 'sawtooth', 0.15);
+          showToast('Silakan tempel ringkasan teks materi terlebih dahulu!', 'error');
+        }
+        return;
+      }
+
+      const targetCount = parseInt(document.getElementById('gen-count').value, 10) || 5;
+      const modeAction = document.getElementById('gen-mode').value;
+
+      // Pecah teks menjadi kalimat bersih
+      const sentences = rawText
+        .replace(/\n+/g, ' ')
+        .split(/(?<=[.!?])\s+/)
+        .map(s => s.trim())
+        .filter(s => s.length >= 28 && s.split(/\s+/).length >= 5);
+
+      if (sentences.length === 0) {
+        if (!silent) showToast('Teks terlalu pendek. Masukkan minimal 1–2 paragraf kalimat lengkap.', 'error');
+        return;
+      }
+
+      // Ekstrak seluruh kata kunci penting (kandidat istilah/konsep) dari teks
+      const allWords = rawText
+        .replace(/[.,!?;:()"“”']/g, '')
+        .split(/\s+/)
+        .map(w => w.trim())
+        .filter(w => w.length >= 4 && !STOPWORDS_ID.has(w.toLowerCase()));
+
+      const uniqueKeywords = Array.from(new Set(allWords.map(w => w.toLowerCase())))
+        .map(lower => allWords.find(orig => orig.toLowerCase() === lower));
+
+      const generated = [];
+
+      // Buat soal dari tiap kalimat (berulang jika targetCount > jumlah kalimat dengan target kata berbeda)
+      for (let i = 0; i < targetCount; i++) {
+        const sentence = sentences[i % sentences.length];
+        const qObj = buildQuestionFromSentence(sentence, uniqueKeywords, i);
+        if (qObj) {
+          generated.push(qObj);
+        }
+      }
+
+      if (generated.length === 0) {
+        if (!silent) showToast('Tidak dapat mengekstrak soal dari teks tersebut. Coba gunakan kalimat definisi/fakta.', 'error');
+        return;
+      }
+
+      if (modeAction === 'append') {
+        questions = questions.concat(generated);
+      } else {
+        questions = generated;
+      }
+
+      renderStudioQuestions();
+      if (!silent) {
+        playNote(620, 0.09, 'sine', 0.15, 0);
+        playNote(820, 0.14, 'triangle', 0.18, 0.08);
+        showToast(`Berhasil membuat ${generated.length} soal interaktif dari ringkasan materi!`, 'success');
+      }
+    }
+
+    function buildQuestionFromSentence(sentence, textKeywords, seedIdx) {
+      // Cek pola definisi: "X adalah Y" / "X merupakan Y" / "disebut X" / "dinamakan X"
+      const cleanSentence = sentence.replace(/[.!?]+$/, '');
+      const wordsInSentence = cleanSentence
+        .replace(/[.,!?;:()"“”']/g, '')
+        .split(/\s+/)
+        .filter(w => w.length >= 4 && !STOPWORDS_ID.has(w.toLowerCase()));
+
+      if (wordsInSentence.length === 0) return null;
+
+      // Pilih kata kunci target yang belum dipakai jika memungkinkan
+      const targetWord = wordsInSentence[(seedIdx * 2) % wordsInSentence.length];
+      const cleanTarget = targetWord.replace(/[.,!?;:()"“”']/g, '');
+
+      // Buat kalimat rumpang (fill-in-the-blank) yang ramah siswa SD
+      const regex = new RegExp(`\\b${escapeRegex(cleanTarget)}\\b`, 'i');
+      const blankedSentence = cleanSentence.replace(regex, '________');
+
+      let questionPrompt = '';
+      if (blankedSentence !== cleanSentence) {
+        questionPrompt = `Lengkapilah pernyataan berikut dengan istilah yang tepat:\n"${blankedSentence}."`;
+      } else {
+        questionPrompt = `Berdasarkan materi, istilah penting yang berkaitan dengan pernyataan "${cleanSentence}" adalah ....`;
+      }
+
+      // Kumpulkan 3 pengecoh (distractors) cerdas dari kata kunci lain di teks + kamus edukasi
+      const candidateDistractors = [...textKeywords, ...DISTRACTOR_VOCAB]
+        .map(w => w.replace(/[.,!?;:()"“”']/g, '').trim())
+        .filter(w =>
+          w.length >= 3 &&
+          w.toLowerCase() !== cleanTarget.toLowerCase() &&
+          !STOPWORDS_ID.has(w.toLowerCase())
+        );
+
+      const uniqueDistractors = [];
+      const seenLower = new Set([cleanTarget.toLowerCase()]);
+      const shuffledCandidates = shuffleArray([...candidateDistractors]);
+
+      for (const cand of shuffledCandidates) {
+        if (!seenLower.has(cand.toLowerCase())) {
+          seenLower.add(cand.toLowerCase());
+          uniqueDistractors.push(formatOptionCase(cand, cleanTarget));
+          if (uniqueDistractors.length === 3) break;
+        }
+      }
+
+      while (uniqueDistractors.length < 3) {
+        uniqueDistractors.push(`Pilihan ${uniqueDistractors.length + 1}`);
+      }
+
+      // Gabungkan jawaban benar & 3 pengecoh lalu acak posisinya
+      const rawOptions = [
+        { text: cleanTarget, isCorrect: true },
+        ...uniqueDistractors.map(d => ({ text: d, isCorrect: false }))
+      ];
+      const shuffledOptions = shuffleArray(rawOptions);
+      const correctIndex = shuffledOptions.findIndex(o => o.isCorrect);
+
+      return {
+        id: 'q_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+        question: questionPrompt,
+        options: shuffledOptions.map(o => o.text),
+        correctIndex: correctIndex,
+        explanation: `Jawaban yang tepat adalah "${cleanTarget}" sesuai kalimat: "${cleanSentence}."`
+      };
+    }
+
+    function formatOptionCase(word, referenceWord) {
+      if (referenceWord[0] === referenceWord[0].toUpperCase()) {
+        return word.charAt(0).toUpperCase() + word.slice(1);
+      }
+      return word.toLowerCase();
+    }
+
+    function escapeRegex(str) {
+      return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function shuffleArray(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    // =========================================================================
+    // 6. RENDER DAFTAR SOAL DI STUDIO GURU & MODAL EDITOR MANUAL
+    // =========================================================================
+    function renderStudioQuestions() {
+      const listEl = document.getElementById('studio-questions-list');
+      document.getElementById('studio-q-total').textContent = questions.length;
+      document.getElementById('nav-q-count').textContent = questions.length;
+
+      if (questions.length === 0) {
+        listEl.innerHTML = `
+          <div class="bg-white rounded-3xl border-2 border-dashed border-slate-300 p-10 text-center">
+            <div class="text-4xl mb-2">📝</div>
+            <h3 class="font-game font-bold text-base text-slate-800 mb-1">Belum Ada Soal di Daftar</h3>
+            <p class="text-xs text-slate-500 mb-4">Tempel ringkasan materi di sebelah kiri lalu klik "Generate Soal Otomatis", atau tambah soal secara manual.</p>
+            <button type="button" onclick="openQuestionModal(null)" class="px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-bold">
+              ➕ Tambah Soal Pertama
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      const letters = ['A', 'B', 'C', 'D'];
+
+      listEl.innerHTML = questions.map((q, idx) => `
+        <div class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-2xs hover:border-indigo-300 transition">
+          <div class="flex items-start justify-between gap-3 mb-3">
+            <div class="flex items-start gap-2.5">
+              <span class="w-7 h-7 rounded-xl bg-indigo-600 text-white font-game font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
+                ${idx + 1}
+              </span>
+              <p class="text-sm font-bold text-slate-900 whitespace-pre-line leading-snug">
+                ${escapeHtml(q.question)}
+              </p>
+            </div>
+
+            <div class="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onclick="openQuestionModal(${idx})"
+                title="Edit Soal"
+                class="p-1.5 rounded-lg bg-slate-100 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 text-xs font-bold transition"
+              >
+                ✏️
+              </button>
+              <button
+                type="button"
+                onclick="deleteQuestion(${idx})"
+                title="Hapus Soal"
+                class="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 text-xs font-bold transition"
+              >
+                🗑️
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-0 sm:pl-9 mb-2.5">
+            ${q.options.map((opt, oIdx) => {
+              const isCorrect = oIdx === q.correctIndex;
+              return `
+                <div class="px-3 py-2 rounded-xl text-xs font-semibold border flex items-center gap-2 ${
+                  isCorrect
+                    ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
+                    : 'bg-slate-50 border-slate-200 text-slate-700'
+                }">
+                  <span class="w-5 h-5 rounded-md ${
+                    isCorrect ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700'
+                  } font-bold text-[11px] flex items-center justify-center shrink-0">
+                    ${letters[oIdx]}
+                  </span>
+                  <span class="truncate">${escapeHtml(opt)}</span>
+                  ${isCorrect ? '<span class="ml-auto text-emerald-600 font-extrabold">✓</span>' : ''}
+                </div>
+              `;
+            }).join('')}
+          </div>
+
+          ${q.explanation ? `
+            <div class="pl-0 sm:pl-9 text-[11px] text-slate-500">
+              💡 <strong>Pembahasan:</strong> ${escapeHtml(q.explanation)}
+            </div>
+          ` : ''}
+        </div>
+      `).join('');
+    }
+
+    function openQuestionModal(index) {
+      const modal = document.getElementById('question-modal');
+      const titleEl = document.getElementById('modal-title');
+      document.getElementById('edit-q-index').value = index === null ? -1 : index;
+
+      if (index === null) {
+        titleEl.textContent = '➕ Tambah Soal Pilihan Ganda Manual';
+        document.getElementById('edit-q-text').value = '';
+        document.getElementById('edit-opt-0').value = '';
+        document.getElementById('edit-opt-1').value = '';
+        document.getElementById('edit-opt-2').value = '';
+        document.getElementById('edit-opt-3').value = '';
+        document.getElementById('edit-q-correct').value = '0';
+        document.getElementById('edit-q-explanation').value = '';
+      } else {
+        const q = questions[index];
+        titleEl.textContent = `✏️ Edit Soal Nomor ${index + 1}`;
+        document.getElementById('edit-q-text').value = q.question;
+        document.getElementById('edit-opt-0').value = q.options[0] || '';
+        document.getElementById('edit-opt-1').value = q.options[1] || '';
+        document.getElementById('edit-opt-2').value = q.options[2] || '';
+        document.getElementById('edit-opt-3').value = q.options[3] || '';
+        document.getElementById('edit-q-correct').value = String(q.correctIndex);
+        document.getElementById('edit-q-explanation').value = q.explanation || '';
+      }
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeQuestionModal() {
+      const modal = document.getElementById('question-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function saveQuestionFromModal(e) {
+      e.preventDefault();
+      const idx = parseInt(document.getElementById('edit-q-index').value, 10);
+      const qObj = {
+        id: idx >= 0 ? questions[idx].id : 'q_' + Date.now(),
+        question: document.getElementById('edit-q-text').value.trim(),
+        options: [
+          document.getElementById('edit-opt-0').value.trim(),
+          document.getElementById('edit-opt-1').value.trim(),
+          document.getElementById('edit-opt-2').value.trim(),
+          document.getElementById('edit-opt-3').value.trim()
+        ],
+        correctIndex: parseInt(document.getElementById('edit-q-correct').value, 10),
+        explanation: document.getElementById('edit-q-explanation').value.trim()
+      };
+
+      if (idx >= 0) {
+        questions[idx] = qObj;
+        showToast(`Soal nomor ${idx + 1} berhasil diperbarui!`, 'success');
+      } else {
+        questions.push(qObj);
+        showToast('Soal baru berhasil ditambahkan ke daftar!', 'success');
+      }
+
+      playNote(660, 0.08, 'sine', 0.15);
+      closeQuestionModal();
+      renderStudioQuestions();
+    }
+
+    function deleteQuestion(idx) {
+      questions.splice(idx, 1);
+      playNote(380, 0.08, 'sine', 0.14);
+      renderStudioQuestions();
+      showToast('Soal dihapus dari daftar.', 'info');
+    }
+
+    // =========================================================================
+    // 7. SWITCH MODE STUDIO GURU <-> ARENA KUIS SISWA
+    // =========================================================================
+    function switchAppMode(mode) {
+      stopGameTimer();
+      const studioEl = document.getElementById('mode-studio');
+      const arenaEl = document.getElementById('mode-arena');
+      const navStudio = document.getElementById('nav-studio');
+      const navArena = document.getElementById('nav-arena');
+
+      if (mode === 'arena') {
+        if (questions.length === 0) {
+          playNote(220, 0.2, 'sawtooth', 0.15);
+          showToast('Buat minimal 1 soal terlebih dahulu sebelum masuk ke Arena Kuis!', 'error');
+          return;
+        }
+        syncConfig();
+        studioEl.classList.add('hidden');
+        arenaEl.classList.remove('hidden');
+
+        navArena.className = 'px-3 sm:px-4 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 text-white shadow-2xs transition flex items-center gap-1.5';
+        navStudio.className = 'px-3 sm:px-4 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5';
+
+        applyArenaTheme();
+        renderArenaWelcome();
+      } else {
+        arenaEl.classList.add('hidden');
+        studioEl.classList.remove('hidden');
+
+        navStudio.className = 'px-3 sm:px-4 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 text-white shadow-2xs transition flex items-center gap-1.5';
+        navArena.className = 'px-3 sm:px-4 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5';
+      }
+      playNote(580, 0.07, 'sine', 0.12);
+    }
+
+    function applyArenaTheme() {
+      const container = document.getElementById('arena-container');
+      container.classList.remove('arena-space', 'arena-forest', 'arena-classic');
+      if (quizConfig.tema === 'forest') {
+        container.classList.add('arena-forest');
+      } else if (quizConfig.tema === 'classic') {
+        container.classList.add('arena-classic');
+      } else {
+        container.classList.add('arena-space');
+      }
+    }
+
+    // =========================================================================
+    // 8. LAYAR ARENA KUIS: WELCOME SCREEN, ACTIVE GAMEPLAY, & VICTORY SCREEN
+    // =========================================================================
+    function renderArenaWelcome() {
+      gameState.screen = 'welcome';
+      const isDark = quizConfig.tema !== 'classic';
+      const container = document.getElementById('arena-container');
+      const leaderboard = getLeaderboard(quizConfig.judul);
+
+      container.innerHTML = `
+        <div class="p-6 sm:p-10 text-center animate-pop">
+          <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider mb-4 ${
+            isDark ? 'bg-white/15 text-amber-300 border border-white/20' : 'bg-indigo-100 text-indigo-800 border border-indigo-200'
+          }">
+            <span>🎓</span> ${escapeHtml(quizConfig.fase)} • ${escapeHtml(quizConfig.mapel)}
+          </div>
+
+          <h2 class="font-game font-bold text-2xl sm:text-4xl mb-3 leading-tight">
+            ${escapeHtml(quizConfig.judul)}
+          </h2>
+          <p class="text-xs sm:text-sm max-w-xl mx-auto mb-6 ${isDark ? 'text-indigo-100' : 'text-slate-600'}">
+            Jawab setiap pertanyaan dengan cepat dan tepat untuk mendapatkan bonus kecepatan serta pengganda skor (Combo)!
+          </p>
+
+          <!-- Statistik Aturan Kuis -->
+          <div class="grid grid-cols-3 gap-3 max-w-lg mx-auto mb-7">
+            <div class="p-3 rounded-2xl ${isDark ? 'bg-white/10 border border-white/15' : 'bg-white border border-slate-200 shadow-2xs'}">
+              <div class="text-lg sm:text-xl font-game font-bold">${questions.length}</div>
+              <div class="text-[11px] opacity-80">Total Soal</div>
+            </div>
+            <div class="p-3 rounded-2xl ${isDark ? 'bg-white/10 border border-white/15' : 'bg-white border border-slate-200 shadow-2xs'}">
+              <div class="text-lg sm:text-xl font-game font-bold">${quizConfig.waktuPerSoal} Detik</div>
+              <div class="text-[11px] opacity-80">Waktu / Soal</div>
+            </div>
+            <div class="p-3 rounded-2xl ${isDark ? 'bg-white/10 border border-white/15' : 'bg-white border border-slate-200 shadow-2xs'}">
+              <div class="text-lg sm:text-xl font-game font-bold">${quizConfig.nyawaMaks > 0 ? quizConfig.nyawaMaks + ' ❤️' : '∞ ❤️'}</div>
+              <div class="text-[11px] opacity-80">Nyawa</div>
+            </div>
+          </div>
+
+          <!-- Input Nama Pemain -->
+          <div class="max-w-md mx-auto space-y-3 mb-8">
+            <input
+              type="text"
+              id="arena-player-name"
+              value="${escapeHtml(gameState.playerName)}"
+              placeholder="Ketik Nama Kamu di Sini..."
+              onkeydown="if(event.key==='Enter') startQuizChallenge()"
+              class="w-full px-4 py-3.5 rounded-2xl text-center font-bold text-base text-slate-900 bg-white border-2 border-amber-400 shadow-md focus:outline-none focus:ring-4 focus:ring-amber-400/40"
+            />
+
+            <button
+              type="button"
+              onclick="startQuizChallenge()"
+              class="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-game font-bold text-lg shadow-xl shadow-amber-500/25 flex items-center justify-center gap-2 transition active:scale-[0.98]"
+            >
+              <span>🚀</span>
+              <span>Mulai Tantangan!</span>
+            </button>
+          </div>
+
+          <!-- Papan Peringkat Lokal (Leaderboard) -->
+          ${leaderboard.length > 0 ? `
+            <div class="max-w-md mx-auto text-left p-4 rounded-2xl ${
+              isDark ? 'bg-black/25 border border-white/15' : 'bg-white border border-slate-200 shadow-2xs'
+            }">
+              <div class="flex items-center justify-between mb-2.5">
+                <span class="font-game font-bold text-xs uppercase tracking-wider flex items-center gap-1.5">
+                  <span>🏆</span> Papan Juara Kelas (Top 5)
+                </span>
+                <button type="button" onclick="clearLeaderboard()" class="text-[10px] underline opacity-70 hover:opacity-100">
+                  Reset Skor
+                </button>
+              </div>
+              <div class="space-y-1.5">
+                ${leaderboard.slice(0, 5).map((entry, idx) => `
+                  <div class="flex items-center justify-between text-xs py-1.5 px-2.5 rounded-xl ${
+                    isDark ? 'bg-white/10' : 'bg-slate-50'
+                  }">
+                    <span class="font-bold flex items-center gap-2">
+                      <span>${idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}</span>
+                      <span>${escapeHtml(entry.name)}</span>
+                    </span>
+                    <span class="font-game font-bold ${isDark ? 'text-amber-300' : 'text-indigo-600'}">
+                      ${entry.score} Poin (${entry.accuracy}%)
+                    </span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    function startQuizChallenge() {
+      const nameInput = document.getElementById('arena-player-name');
+      const pName = (nameInput ? nameInput.value.trim() : '') || 'Siswa Hebat';
+
+      gameState = {
+        screen: 'playing',
+        playerName: pName,
+        currentIndex: 0,
+        score: 0,
+        combo: 0,
+        maxCombo: 0,
+        lives: quizConfig.nyawaMaks,
+        timeLeft: quizConfig.waktuPerSoal,
+        timerId: null,
+        totalTimeSpent: 0,
+        questionStartTime: Date.now(),
+        answeredCurrent: false,
+        history: []
+      };
+
+      sfxStartGame();
+      renderActiveQuestion();
+    }
+
+    function renderActiveQuestion() {
+      stopGameTimer();
+      const q = questions[gameState.currentIndex];
+      const isDark = quizConfig.tema !== 'classic';
+      const container = document.getElementById('arena-container');
+
+      gameState.timeLeft = quizConfig.waktuPerSoal;
+      gameState.answeredCurrent = false;
+      gameState.questionStartTime = Date.now();
+
+      const optionThemes = [
+        { bg: 'bg-rose-500 hover:bg-rose-600 border-rose-700 text-white', badge: 'bg-rose-700 text-white', key: 'A' },
+        { bg: 'bg-sky-500 hover:bg-sky-600 border-sky-700 text-white', badge: 'bg-sky-700 text-white', key: 'B' },
+        { bg: 'bg-amber-500 hover:bg-amber-600 border-amber-700 text-slate-950', badge: 'bg-amber-700 text-white', key: 'C' },
+        { bg: 'bg-emerald-500 hover:bg-emerald-600 border-emerald-700 text-white', badge: 'bg-emerald-700 text-white', key: 'D' }
+      ];
+
+      // Render Hati Nyawa
+      let livesDisplay = '';
+      if (quizConfig.nyawaMaks > 0) {
+        for (let i = 0; i < quizConfig.nyawaMaks; i++) {
+          livesDisplay += i < gameState.lives ? '❤️' : '🖤';
+        }
+      } else {
+        livesDisplay = '∞ ❤️';
+      }
+
+      container.innerHTML = `
+        <div class="p-5 sm:p-8 animate-pop">
+          
+          <!-- TOP HUD BAR -->
+          <div class="flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b ${
+            isDark ? 'border-white/15' : 'border-slate-200'
+          }">
+            <div class="flex items-center gap-2.5">
+              <div class="px-3 py-1.5 rounded-xl font-bold text-xs ${
+                isDark ? 'bg-white/15 text-white' : 'bg-white border border-slate-200 text-slate-800'
+              }">
+                👤 ${escapeHtml(gameState.playerName)}
+              </div>
+              <div class="px-3 py-1.5 rounded-xl font-game font-bold text-xs ${
+                isDark ? 'bg-indigo-500/40 text-indigo-100 border border-indigo-400/30' : 'bg-indigo-100 text-indigo-800'
+              }">
+                Soal ${gameState.currentIndex + 1} / ${questions.length}
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2.5">
+              <!-- Nyawa -->
+              <div class="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold tracking-wider ${
+                isDark ? 'bg-black/25' : 'bg-white border border-slate-200'
+              }">
+                ${livesDisplay}
+              </div>
+
+              <!-- Combo Badge -->
+              ${gameState.combo >= 2 ? `
+                <div class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 font-game font-extrabold text-xs animate-bounce">
+                  🔥 Combo x${gameState.combo}!
+                </div>
+              ` : ''}
+
+              <!-- Live Score -->
+              <div class="px-3.5 py-1.5 rounded-xl font-game font-bold text-sm ${
+                isDark ? 'bg-amber-400 text-slate-950' : 'bg-slate-900 text-amber-400'
+              }">
+                ⭐ ${gameState.score}
+              </div>
+            </div>
+          </div>
+
+          <!-- TIMER BAR & DIGITAL COUNTDOWN -->
+          <div class="mb-6">
+            <div class="flex items-center justify-between text-xs font-bold mb-1.5">
+              <span class="opacity-85">⏱️ Sisa Waktu Menjawab</span>
+              <span id="hud-timer-text" class="font-game text-base px-2.5 py-0.5 rounded-lg bg-emerald-500 text-white">
+                ${gameState.timeLeft} detik
+              </span>
+            </div>
+            <div class="w-full h-3.5 rounded-full overflow-hidden p-0.5 ${isDark ? 'bg-black/35' : 'bg-slate-200'}">
+              <div
+                id="hud-timer-bar"
+                class="h-full rounded-full bg-emerald-400 transition-all duration-300"
+                style="width: 100%"
+              ></div>
+            </div>
+          </div>
+
+          <!-- KARTU PERTANYAAN -->
+          <div id="question-card-box" class="p-5 sm:p-7 rounded-3xl mb-6 ${
+            isDark
+              ? 'bg-white text-slate-900 shadow-lg'
+              : 'bg-white text-slate-900 border-2 border-indigo-100 shadow-md'
+          }">
+            <p class="font-game font-semibold text-lg sm:text-2xl leading-relaxed whitespace-pre-line text-center">
+              ${escapeHtml(q.question)}
+            </p>
+          </div>
+
+          <!-- 4 TOMBOL PILIHAN JAWABAN (A, B, C, D) -->
+          <div id="options-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            ${q.options.map((opt, idx) => {
+              const th = optionThemes[idx];
+              return `
+                <button
+                  type="button"
+                  id="opt-btn-${idx}"
+                  onclick="submitAnswer(${idx})"
+                  class="btn-option-3d p-4 rounded-2xl border-b-4 text-left flex items-center gap-3.5 shadow-md ${th.bg}"
+                >
+                  <span class="w-9 h-9 rounded-xl font-game font-bold text-base flex items-center justify-center shrink-0 ${th.badge}">
+                    ${th.key}
+                  </span>
+                  <span class="font-bold text-sm sm:text-base leading-snug">
+                    ${escapeHtml(opt)}
+                  </span>
+                </button>
+              `;
+            }).join('')}
+          </div>
+
+          <!-- AREA FEEDBACK INSTAN & TOMBOL LANJUT -->
+          <div id="feedback-banner" class="hidden mt-6 p-4 sm:p-5 rounded-2xl border-2 animate-pop"></div>
+
+        </div>
+      `;
+
+      startQuestionTimer();
+    }
+
+    function startQuestionTimer() {
+      stopGameTimer();
+      const maxTime = quizConfig.waktuPerSoal;
+
+      gameState.timerId = setInterval(() => {
+        if (gameState.answeredCurrent) {
+          stopGameTimer();
+          return;
+        }
+
+        gameState.timeLeft--;
+        updateTimerHUD(gameState.timeLeft, maxTime);
+
+        if (gameState.timeLeft <= 5 && gameState.timeLeft > 0) {
+          sfxTickUrgent();
+        }
+
+        if (gameState.timeLeft <= 0) {
+          stopGameTimer();
+          handleTimeOut();
+        }
+      }, 1000);
+    }
+
+    function stopGameTimer() {
+      if (gameState.timerId) {
+        clearInterval(gameState.timerId);
+        gameState.timerId = null;
+      }
+    }
+
+    function updateTimerHUD(timeLeft, maxTime) {
+      const textEl = document.getElementById('hud-timer-text');
+      const barEl = document.getElementById('hud-timer-bar');
+      if (!textEl || !barEl) return;
+
+      const pct = Math.max(0, (timeLeft / maxTime) * 100);
+      barEl.style.width = `${pct}%`;
+      textEl.textContent = `${timeLeft} detik`;
+
+      if (timeLeft <= 5) {
+        barEl.className = 'h-full rounded-full bg-rose-500 transition-all duration-300';
+        textEl.className = 'font-game text-base px-2.5 py-0.5 rounded-lg bg-rose-600 text-white animate-urgent';
+      } else if (pct <= 50) {
+        barEl.className = 'h-full rounded-full bg-amber-400 transition-all duration-300';
+        textEl.className = 'font-game text-base px-2.5 py-0.5 rounded-lg bg-amber-500 text-slate-950';
+      } else {
+        barEl.className = 'h-full rounded-full bg-emerald-400 transition-all duration-300';
+        textEl.className = 'font-game text-base px-2.5 py-0.5 rounded-lg bg-emerald-500 text-white';
+      }
+    }
+
+    function handleTimeOut() {
+      submitAnswer(-1); // -1 menandakan waktu habis
+    }
+
+    function submitAnswer(selectedIdx) {
+      if (gameState.answeredCurrent || gameState.screen !== 'playing') return;
+      gameState.answeredCurrent = true;
+      stopGameTimer();
+
+      const elapsedSec = Math.min(
+        quizConfig.waktuPerSoal,
+        Math.max(1, Math.round((Date.now() - gameState.questionStartTime) / 1000))
+      );
+      gameState.totalTimeSpent += elapsedSec;
+
+      const q = questions[gameState.currentIndex];
+      const isCorrect = selectedIdx === q.correctIndex;
+      let pointsEarned = 0;
+
+      // Kunci semua tombol pilihan dan sorot jawaban benar/salah
+      for (let i = 0; i < 4; i++) {
+        const btn = document.getElementById(`opt-btn-${i}`);
+        if (!btn) continue;
+        btn.disabled = true;
+        if (i === q.correctIndex) {
+          btn.className = 'p-4 rounded-2xl border-4 border-emerald-300 bg-emerald-600 text-white text-left flex items-center gap-3.5 shadow-lg scale-[1.02] transition';
+        } else if (i === selectedIdx && !isCorrect) {
+          btn.className = 'p-4 rounded-2xl border-4 border-rose-300 bg-rose-700 text-white text-left flex items-center gap-3.5 opacity-90 animate-shake';
+        } else {
+          btn.classList.add('opacity-40');
+        }
+      }
+
+      if (isCorrect) {
+        gameState.combo++;
+        gameState.maxCombo = Math.max(gameState.maxCombo, gameState.combo);
+        const speedBonus = Math.round((gameState.timeLeft / quizConfig.waktuPerSoal) * 50);
+        const comboBonus = (gameState.combo - 1) * 20;
+        pointsEarned = 100 + speedBonus + comboBonus;
+        gameState.score += pointsEarned;
+        sfxCorrect(gameState.combo);
+      } else {
+        gameState.combo = 0;
+        if (quizConfig.nyawaMaks > 0) {
+          gameState.lives = Math.max(0, gameState.lives - 1);
+        }
+        sfxWrong();
+      }
+
+      gameState.history.push({
+        question: q.question,
+        options: q.options,
+        selectedIdx: selectedIdx,
+        correctIdx: q.correctIndex,
+        explanation: q.explanation,
+        isCorrect: isCorrect,
+        pointsEarned: pointsEarned
+      });
+
+      const outOfLives = quizConfig.nyawaMaks > 0 && gameState.lives <= 0;
+      const isLastQuestion = gameState.currentIndex >= questions.length - 1;
+      const willFinish = outOfLives || isLastQuestion;
+
+      const banner = document.getElementById('feedback-banner');
+      banner.classList.remove('hidden');
+
+      if (isCorrect) {
+        banner.className = 'mt-6 p-4 sm:p-5 rounded-2xl border-2 border-emerald-400 bg-emerald-950/90 text-white animate-pop';
+        banner.innerHTML = `
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div class="font-game font-bold text-lg text-emerald-300 flex items-center gap-2">
+                <span>🎉</span> Hebat! Jawaban Benar! (+${pointsEarned} Poin)
+              </div>
+              <p class="text-xs sm:text-sm text-emerald-100 mt-1">${escapeHtml(q.explanation || 'Pertahankan kecepatan dan ketelitianmu!')}</p>
+            </div>
+            <button
+              type="button"
+              onclick="advanceNextStep()"
+              class="px-5 py-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-game font-bold text-sm shrink-0 shadow-md transition"
+            >
+              ${willFinish ? 'Lihat Hasil Akhir 🏆' : 'Soal Berikutnya ➡️'}
+            </button>
+          </div>
+        `;
+      } else {
+        const reasonTitle = selectedIdx === -1 ? '⏰ Waktu Habis!' : '❌ Kurang Tepat!';
+        banner.className = 'mt-6 p-4 sm:p-5 rounded-2xl border-2 border-rose-400 bg-rose-950/90 text-white animate-pop';
+        banner.innerHTML = `
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div class="font-game font-bold text-lg text-rose-300 flex items-center gap-2">
+                <span>${reasonTitle}</span> Jawaban benar: ${['A', 'B', 'C', 'D'][q.correctIndex]}. ${escapeHtml(q.options[q.correctIndex])}
+              </div>
+              <p class="text-xs sm:text-sm text-rose-100 mt-1">${escapeHtml(q.explanation || 'Jangan menyerah, ayo coba lagi di soal berikutnya!')}</p>
+            </div>
+            <button
+              type="button"
+              onclick="advanceNextStep()"
+              class="px-5 py-3 rounded-xl bg-white hover:bg-slate-100 text-slate-950 font-game font-bold text-sm shrink-0 shadow-md transition"
+            >
+              ${willFinish ? 'Lihat Hasil Akhir 🏆' : 'Lanjut ➡️'}
+            </button>
+          </div>
+        `;
+      }
+    }
+
+    function advanceNextStep() {
+      const outOfLives = quizConfig.nyawaMaks > 0 && gameState.lives <= 0;
+      const isLastQuestion = gameState.currentIndex >= questions.length - 1;
+
+      if (outOfLives || isLastQuestion) {
+        renderArenaResult();
+      } else {
+        gameState.currentIndex++;
+        renderActiveQuestion();
+      }
+    }
+
+    function renderArenaResult() {
+      gameState.screen = 'result';
+      stopGameTimer();
+
+      const totalQ = questions.length;
+      const correctCount = gameState.history.filter(h => h.isCorrect).length;
+      const accuracy = totalQ > 0 ? Math.round((correctCount / totalQ) * 100) : 0;
+
+      let stars = 1;
+      let predicate = "Terus Berlatih, Kamu Pasti Bisa!";
+      if (accuracy >= 80) {
+        stars = 3;
+        predicate = "Luar Biasa! Juara Kuis Kelas!";
+        sfxVictory();
+        launchConfetti();
+      } else if (accuracy >= 50) {
+        stars = 2;
+        predicate = "Bagus Sekali! Terus Tingkatkan!";
+        sfxVictory();
+      } else {
+        playNote(440, 0.2, 'triangle', 0.16);
+      }
+
+      saveToLeaderboard(quizConfig.judul, gameState.playerName, gameState.score, accuracy);
+
+      const isDark = quizConfig.tema !== 'classic';
+      const container = document.getElementById('arena-container');
+      const letters = ['A', 'B', 'C', 'D'];
+
+      container.innerHTML = `
+        <div class="p-6 sm:p-10 text-center animate-pop">
+          <div class="text-4xl sm:text-5xl mb-2 tracking-widest">
+            ${'⭐'.repeat(stars)}${'☆'.repeat(3 - stars)}
+          </div>
+          <h2 class="font-game font-bold text-2xl sm:text-3xl mb-1">${predicate}</h2>
+          <p class="text-xs sm:text-sm opacity-85 mb-6">
+            Selamat menyelesaikan tantangan, <strong>${escapeHtml(gameState.playerName)}</strong>!
+          </p>
+
+          <!-- Ringkasan Skor -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-2xl mx-auto mb-7">
+            <div class="p-3.5 rounded-2xl ${isDark ? 'bg-white/10 border border-white/15' : 'bg-white border border-slate-200'}">
+              <div class="font-game font-bold text-xl sm:text-2xl ${isDark ? 'text-amber-300' : 'text-indigo-600'}">${gameState.score}</div>
+              <div class="text-[11px] opacity-80">Total Poin</div>
+            </div>
+            <div class="p-3.5 rounded-2xl ${isDark ? 'bg-white/10 border border-white/15' : 'bg-white border border-slate-200'}">
+              <div class="font-game font-bold text-xl sm:text-2xl text-emerald-400">${correctCount}/${totalQ}</div>
+              <div class="text-[11px] opacity-80">Jawaban Benar</div>
+            </div>
+            <div class="p-3.5 rounded-2xl ${isDark ? 'bg-white/10 border border-white/15' : 'bg-white border border-slate-200'}">
+              <div class="font-game font-bold text-xl sm:text-2xl">${accuracy}%</div>
+              <div class="text-[11px] opacity-80">Akurasi</div>
+            </div>
+            <div class="p-3.5 rounded-2xl ${isDark ? 'bg-white/10 border border-white/15' : 'bg-white border border-slate-200'}">
+              <div class="font-game font-bold text-xl sm:text-2xl">🔥 x${gameState.maxCombo}</div>
+              <div class="text-[11px] opacity-80">Combo Tertinggi</div>
+            </div>
+          </div>
+
+          <!-- Tombol Aksi Utama -->
+          <div class="flex flex-wrap items-center justify-center gap-3 mb-8">
+            <button
+              type="button"
+              onclick="startQuizChallenge()"
+              class="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-game font-bold text-sm shadow-lg transition"
+            >
+              🔄 Main Lagi
+            </button>
+            <button
+              type="button"
+              onclick="renderArenaWelcome()"
+              class="px-6 py-3.5 rounded-2xl bg-white/15 hover:bg-white/25 border border-white/20 font-game font-bold text-sm transition"
+            >
+              👤 Ganti Pemain / Lihat Juara
+            </button>
+          </div>
+
+          <!-- Ulasan Pembahasan Soal -->
+          <div class="max-w-2xl mx-auto text-left space-y-2.5">
+            <h3 class="font-game font-bold text-sm uppercase tracking-wider mb-2 opacity-90">
+              📖 Ulasan Jawaban & Pembahasan
+            </h3>
+            ${gameState.history.map((item, idx) => `
+              <div class="p-4 rounded-2xl bg-white text-slate-900 shadow-2xs border-l-4 ${
+                item.isCorrect ? 'border-emerald-500' : 'border-rose-500'
+              }">
+                <div class="flex items-start justify-between gap-2 mb-1">
+                  <span class="font-bold text-xs sm:text-sm">${idx + 1}. ${escapeHtml(item.question)}</span>
+                  <span class="text-xs font-extrabold shrink-0 ${item.isCorrect ? 'text-emerald-600' : 'text-rose-600'}">
+                    ${item.isCorrect ? `✅ +${item.pointsEarned}` : '❌ 0'}
+                  </span>
+                </div>
+                <div class="text-xs text-slate-600">
+                  Jawabanmu: <strong>${item.selectedIdx >= 0 ? `${letters[item.selectedIdx]}. ${escapeHtml(item.options[item.selectedIdx])}` : 'Waktu Habis'}</strong>
+                  ${!item.isCorrect ? ` • Kunci: <strong class="text-emerald-700">${letters[item.correctIdx]}. ${escapeHtml(item.options[item.correctIdx])}</strong>` : ''}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // 9. KEYBOARD SHORTCUTS (1-4 ATAU A-D) & LOCAL LEADERBOARD
+    // =========================================================================
+    function setupKeyboardShortcuts() {
+      document.addEventListener('keydown', (e) => {
+        if (gameState.screen !== 'playing' || gameState.answeredCurrent) return;
+        const key = e.key.toUpperCase();
+        const map = { '1': 0, 'A': 0, '2': 1, 'B': 1, '3': 2, 'C': 2, '4': 3, 'D': 3 };
+        if (key in map) {
+          submitAnswer(map[key]);
+        }
+      });
+    }
+
+    function getLeaderboardKey(title) {
+      return 'quiz_lb_' + title.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    }
+
+    function getLeaderboard(title) {
+      try {
+        return JSON.parse(localStorage.getItem(getLeaderboardKey(title)) || '[]');
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveToLeaderboard(title, name, score, accuracy) {
+      const list = getLeaderboard(title);
+      list.push({ name, score, accuracy, date: Date.now() });
+      list.sort((a, b) => b.score - a.score || b.accuracy - a.accuracy);
+      localStorage.setItem(getLeaderboardKey(title), JSON.stringify(list.slice(0, 10)));
+    }
+
+    function clearLeaderboard() {
+      localStorage.removeItem(getLeaderboardKey(quizConfig.judul));
+      renderArenaWelcome();
+      showToast('Papan juara lokal berhasil direset.', 'info');
+    }
+
+    // =========================================================================
+    // 10. KONFETI KEMENANGAN (CANVAS ANIMATION)
+    // =========================================================================
+    function launchConfetti() {
+      const canvas = document.getElementById('confetti-canvas');
+      if (!canvas) return;
+      canvas.classList.remove('hidden');
+      const ctx = canvas.getContext('2d');
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      const colors = ['#f59e0b', '#10b981', '#6366f1', '#ec4899', '#3b82f6'];
+      const pieces = Array.from({ length: 95 }, () => ({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height - canvas.height,
+        r: Math.random() * 6 + 4,
+        c: colors[Math.floor(Math.random() * colors.length)],
+        vy: Math.random() * 3 + 2.5,
+        vx: (Math.random() - 0.5) * 2
+      }));
+
+      let frames = 0;
+      function draw() {
+        frames++;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        pieces.forEach(p => {
+          p.y += p.vy;
+          p.x += p.vx;
+          ctx.fillStyle = p.c;
+          ctx.fillRect(p.x, p.y, p.r, p.r * 1.4);
+        });
+        if (frames < 150) {
+          requestAnimationFrame(draw);
+        } else {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          canvas.classList.add('hidden');
+        }
+      }
+      draw();
+    }
+
+    // =========================================================================
+    // 11. EKSPOR STANDALONE STUDENT HTML (.HTML), JSON & SALIN TEKS
+    // =========================================================================
+    function exportStandaloneStudentHTML() {
+      if (questions.length === 0) {
+        showToast('Tidak ada soal untuk diekspor!', 'error');
+        return;
+      }
+      syncConfig();
+
+      const payload = JSON.stringify({ config: quizConfig, questions: questions });
+      const safeTitle = escapeHtml(quizConfig.judul);
+
+      const standaloneCode = `<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${safeTitle}</title>
+<script src="https://cdn.tailwindcss.com"><\/script>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Plus+Jakarta+Sans:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  body { font-family: 'Plus Jakarta Sans', sans-serif; }
+  .font-game { font-family: 'Fredoka', sans-serif; }
+  .arena-space { background: radial-gradient(circle at top right, #312e81 0%, #1e1b4b 45%, #0f172a 100%); color: #fff; }
+  .arena-forest { background: linear-gradient(145deg, #065f46 0%, #047857 45%, #064e3b 100%); color: #fff; }
+  .arena-classic { background: linear-gradient(145deg, #f8fafc 0%, #e0e7ff 100%); color: #0f172a; }
+</style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 bg-slate-900">
+<div id="app" class="w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden arena-${quizConfig.tema}"></div>
+<script>
+const DATA = ${payload};
+const CFG = DATA.config;
+const QS = DATA.questions;
+let idx = 0, score = 0, combo = 0, lives = CFG.nyawaMaks, timeLeft = CFG.waktuPerSoal, timer = null, pName = '', answered = false, hist = [];
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function beep(f, d){ try{ const c=new (window.AudioContext||window.webkitAudioContext)(); const o=c.createOscillator(), g=c.createGain(); o.frequency.value=f; g.gain.exponentialRampToValueAtTime(0.001, c.currentTime+d); o.connect(g); g.connect(c.destination); o.start(); o.stop(c.currentTime+d); }catch(e){} }
+function renderWelcome(){
+  document.getElementById('app').innerHTML = \`
+    <div class="p-8 text-center">
+      <div class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-white/15 mb-3">\${esc(CFG.fase)} • \${esc(CFG.mapel)}</div>
+      <h1 class="font-game text-2xl sm:text-4xl font-bold mb-3">\${esc(CFG.judul)}</h1>
+      <p class="text-xs sm:text-sm opacity-85 mb-6">\${QS.length} Soal • \${CFG.waktuPerSoal} Detik/Soal • Nyawa: \${CFG.nyawaMaks > 0 ? CFG.nyawaMaks + ' ❤️' : 'Tanpa Batas'}</p>
+      <input id="pname" placeholder="Ketik Nama Kamu..." class="w-full max-w-sm px-4 py-3 rounded-2xl text-center font-bold text-slate-900 mb-3 block mx-auto" />
+      <button onclick="start()" class="w-full max-w-sm py-3.5 rounded-2xl bg-amber-400 text-slate-950 font-game font-bold text-lg shadow-lg">🚀 Mulai Kuis!</button>
+    </div>\`;
+}
+function start(){
+  pName = (document.getElementById('pname')?.value || '').trim() || 'Siswa Hebat';
+  idx = 0; score = 0; combo = 0; lives = CFG.nyawaMaks; hist = [];
+  beep(660, 0.15); renderQ();
+}
+function renderQ(){
+  clearInterval(timer); answered = false; timeLeft = CFG.waktuPerSoal;
+  const q = QS[idx];
+  const cols = ['bg-rose-500 border-rose-700 text-white','bg-sky-500 border-sky-700 text-white','bg-amber-400 border-amber-600 text-slate-950','bg-emerald-500 border-emerald-700 text-white'];
+  document.getElementById('app').innerHTML = \`
+    <div class="p-6 sm:p-8">
+      <div class="flex justify-between items-center text-xs font-bold mb-4">
+        <span>👤 \${esc(pName)} | Soal \${idx+1}/\${QS.length}</span>
+        <span>\${CFG.nyawaMaks>0 ? '❤️'.repeat(lives) : '∞ ❤️'} | ⭐ \${score}</span>
+      </div>
+      <div class="flex justify-between text-xs font-bold mb-1"><span>⏱️ Waktu</span><span id="tt">\${timeLeft}d</span></div>
+      <div class="w-full h-3 bg-black/30 rounded-full overflow-hidden mb-5"><div id="tb" class="h-full bg-emerald-400 transition-all" style="width:100%"></div></div>
+      <div class="bg-white text-slate-900 p-5 rounded-2xl font-game text-lg sm:text-xl text-center mb-5 shadow">\${esc(q.question)}</div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        \${q.options.map((o,i)=>\`<button id="b\${i}" onclick="ans(\${i})" class="p-3.5 rounded-2xl border-b-4 font-bold text-left flex items-center gap-3 \${cols[i]}"><span class="px-2.5 py-1 rounded-lg bg-black/20">\${['A','B','C','D'][i]}</span><span>\${esc(o)}</span></button>\`).join('')}
+      </div>
+      <div id="fb" class="hidden mt-5 p-4 rounded-2xl bg-black/40 text-sm"></div>
+    </div>\`;
+  timer = setInterval(()=>{
+    timeLeft--;
+    const tt=document.getElementById('tt'), tb=document.getElementById('tb');
+    if(tt) tt.textContent = timeLeft+'d';
+    if(tb) tb.style.width = Math.max(0,(timeLeft/CFG.waktuPerSoal)*100)+'%';
+    if(timeLeft<=5 && timeLeft>0) beep(880, 0.06);
+    if(timeLeft<=0){ clearInterval(timer); ans(-1); }
+  },1000);
+}
+function ans(sel){
+  if(answered) return; answered = true; clearInterval(timer);
+  const q = QS[idx], ok = sel === q.correctIndex;
+  for(let i=0;i<4;i++){ const b=document.getElementById('b'+i); if(b){ b.disabled=true; if(i!==q.correctIndex) b.style.opacity='0.45'; } }
+  if(ok){ combo++; const pts = 100 + Math.round((timeLeft/CFG.waktuPerSoal)*50) + (combo-1)*20; score += pts; beep(880, 0.15); }
+  else { combo = 0; if(CFG.nyawaMaks>0) lives--; beep(200, 0.25); }
+  hist.push(ok);
+  const end = (CFG.nyawaMaks>0 && lives<=0) || idx >= QS.length-1;
+  const fb = document.getElementById('fb'); fb.classList.remove('hidden');
+  fb.innerHTML = \`<div class="flex flex-col sm:flex-row justify-between items-center gap-3">
+    <div><strong>\${ok ? '🎉 Benar!' : '❌ Kurang Tepat!'}</strong> Kunci: \${['A','B','C','D'][q.correctIndex]}. \${esc(q.options[q.correctIndex])}</div>
+    <button onclick="\${end?'renderEnd()':'idx++;renderQ()'}" class="px-4 py-2 rounded-xl bg-amber-400 text-slate-950 font-bold shrink-0">\${end?'Lihat Skor 🏆':'Lanjut ➡️'}</button>
+  </div>\`;
+}
+function renderEnd(){
+  const okCount = hist.filter(Boolean).length, acc = Math.round((okCount/QS.length)*100);
+  document.getElementById('app').innerHTML = \`
+    <div class="p-8 text-center">
+      <div class="text-4xl mb-2">\${acc>=80?'⭐⭐⭐':acc>=50?'⭐⭐':'⭐'}</div>
+      <h2 class="font-game text-2xl sm:text-3xl font-bold mb-1">Selesai! Hebat, \${esc(pName)}!</h2>
+      <p class="text-sm opacity-85 mb-6">Skor Akhir: <strong>\${score} Poin</strong> • Benar: <strong>\${okCount}/\${QS.length} (\${acc}%)</strong></p>
+      <button onclick="start()" class="px-6 py-3 rounded-2xl bg-amber-400 text-slate-950 font-game font-bold">🔄 Main Lagi</button>
+    </div>\`;
+}
+renderWelcome();
+<\/script>
+</body>
+</html>`;
+
+      const filename = `Kuis_${quizConfig.judul.replace(/[^a-z0-9]/gi, '_').slice(0, 35)}.html`;
+      const blob = new Blob([standaloneCode], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      sfxVictory();
+      showToast(`File Kuis Siswa (${filename}) berhasil diunduh!`, 'success');
+    }
+
+    function exportProjectJSON() {
+      syncConfig();
+      const data = JSON.stringify({ config: quizConfig, questions: questions }, null, 2);
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Proyek_Kuis_${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Proyek kuis (.json) tersimpan!', 'success');
+    }
+
+    function importProjectJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (parsed.config && Array.isArray(parsed.questions)) {
+            quizConfig = { ...quizConfig, ...parsed.config };
+            questions = parsed.questions;
+            document.getElementById('cfg-judul').value = quizConfig.judul;
+            document.getElementById('cfg-mapel').value = quizConfig.mapel;
+            document.getElementById('cfg-fase').value = quizConfig.fase;
+            document.getElementById('cfg-waktu').value = String(quizConfig.waktuPerSoal);
+            document.getElementById('cfg-nyawa').value = String(quizConfig.nyawaMaks);
+            document.getElementById('cfg-tema').value = quizConfig.tema;
+            renderStudioQuestions();
+            showToast('Proyek kuis berhasil dimuat!', 'success');
+          }
+        } catch (err) {
+          showToast('Format file proyek JSON tidak valid.', 'error');
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    function copyQuizAsText() {
+      if (questions.length === 0) return;
+      const letters = ['A', 'B', 'C', 'D'];
+      const text = [
+        `🎮 ${quizConfig.judul.toUpperCase()}`,
+        `Mata Pelajaran: ${quizConfig.mapel} | Jenjang: ${quizConfig.fase}`,
+        `Waktu: ${quizConfig.waktuPerSoal} Detik/Soal`,
+        `----------------------------------------`,
+        ...questions.map((q, i) => [
+          `${i + 1}. ${q.question}`,
+          ...q.options.map((o, oi) => `   ${letters[oi]}. ${o}${oi === q.correctIndex ? ' [BENAR]' : ''}`),
+          ``
+        ].join('\n'))
+      ].join('\n');
+
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast('Teks soal kuis disalin ke clipboard!', 'success');
+    }
+
+    // =========================================================================
+    // 12. UTILITY TOAST & ESCAPE HTML
+    // =========================================================================
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      const styles = {
+        success: 'bg-slate-900 text-white border-slate-700',
+        error: 'bg-rose-600 text-white border-rose-500',
+        info: 'bg-indigo-600 text-white border-indigo-500'
+      };
+      toast.className = `pointer-events-auto flex items-center gap-2 px-4 py-3 rounded-2xl border shadow-lg text-xs sm:text-sm font-bold animate-pop ${styles[type] || styles.success}`;
+      toast.innerHTML = `<span>${type === 'error' ? '⚠️' : type === 'info' ? '💡' : '✅'}</span><span>${escapeHtml(message)}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.25s ease';
+        setTimeout(() => toast.remove(), 250);
+      }, 3200);
+    }
+
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+  </script>
+</body>
+</html>
